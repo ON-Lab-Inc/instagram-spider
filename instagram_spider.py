@@ -47,22 +47,23 @@ class InstagramSpider(scrapy.Spider):
         # Load it as a json object
         locations = json.loads(jscleaned)
         # We check if there is a next page
-        user = locations['entry_data']['ProfilePage'][0]['user']
+        user = locations['entry_data']['ProfilePage'][0]['graphql']['user']
         is_private = user['is_private']
 
         if is_private:
             print("!!!!! Error !!!! : Looks like a private account")
             return
 
-        has_next = user['media']['page_info']['has_next_page']
-        medias = user['media']['nodes']
+        has_next = user['edge_felix_video_timeline']['page_info']['has_next_page']
+        medias = user['edge_felix_video_timeline']['edges']
 
         # We parse the photos
         for media in medias:
-            url = media['display_src']
-            id = media['id']
-            type = media['__typename']
-            code = media['code']
+            node = media['node']
+            url = node['display_url']
+            id = node['id']
+            type = node['__typename']
+            code = node['shortcode']
 
             if type == "GraphSidecar":
                 yield scrapy.Request(
@@ -85,7 +86,7 @@ class InstagramSpider(scrapy.Spider):
 
         # If there is a next page, we crawl it
         if has_next:
-            url = "https://www.instagram.com/" + self.account + "/?max_id=" + medias[-1]['id']
+            url = "https://www.instagram.com/" + self.account + "/?max_id=" + medias[-1]['node']['id']
             yield scrapy.Request(url, callback=self.parse_page)
 
     # Method for parsing a video_page
