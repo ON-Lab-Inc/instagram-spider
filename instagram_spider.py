@@ -6,6 +6,10 @@ import os
 import datetime
 
 
+def getId(media):
+    return media['node']['id']
+
+
 class InstagramSpider(scrapy.Spider):
     name = "Instagram"  # Name of the Spider, required value
 
@@ -54,8 +58,24 @@ class InstagramSpider(scrapy.Spider):
             print("!!!!! Error !!!! : Looks like a private account")
             return
 
-        has_next = user['edge_felix_video_timeline']['page_info']['has_next_page']
-        medias = user['edge_felix_video_timeline']['edges']
+        has_next = (
+            user['edge_owner_to_timeline_media']['page_info']['has_next_page'] or
+            user['edge_saved_media']['page_info']['has_next_page'] or
+            user['edge_media_collections']['page_info']['has_next_page'] or
+            user['edge_related_profiles']['page_info']['has_next_page']
+        )
+        medias = user['edge_owner_to_timeline_media']['edges']
+        medias += user['edge_saved_media']['edges']
+        medias += user['edge_media_collections']['edges']
+        medias += user['edge_related_profiles']['edges']
+        if self.videos == 'y':
+            medias += user['edge_felix_video_timeline']['edges']
+            has_next = (
+                has_next or
+                user['edge_felix_video_timeline']['page_info']['has_next_page']
+            )
+
+        medias.sort(key=getId)
 
         # We parse the photos
         for media in medias:
@@ -78,7 +98,7 @@ class InstagramSpider(scrapy.Spider):
                     callback=self.save_media
                 )
 
-            elif type == "GraphVideo" and self.videos == 'y':
+            elif type == "GraphVideo":
                 yield scrapy.Request(
                     "https://www.instagram.com/p/" + code,
                     callback=self.parse_page_video
@@ -105,7 +125,7 @@ class InstagramSpider(scrapy.Spider):
             callback=self.save_media
         )
 
-    # Method for parsing a video_page
+    # Method for parsing a sidecar
     def parse_sideCar(self, response):
         # We get the json containing the photos's path
         js = response.selector.xpath(
