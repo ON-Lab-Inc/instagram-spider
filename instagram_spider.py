@@ -13,16 +13,11 @@ def getId(media):
 class InstagramSpider(scrapy.Spider):
     name = "Instagram"  # Name of the Spider, required value
 
-    def __init__(self, account='', videos='', timestamp=''):
+    def __init__(self, account='', videos='', images='', sidecar='', timestamp=''):
         self.videos = videos
+        self.images = images
+        self.sidecar = sidecar
         self.account = account
-
-        if account == '':
-            self.account = input("Name of the account ?")
-        if videos == '':
-            self.videos = input("Download videos ? (y/n) ")
-        if timestamp == '':
-            timestamp = input("Add timestamp ? (y/n) ")
 
         self.start_urls = ["https://www.instagram.com/" + self.account]
 
@@ -85,20 +80,20 @@ class InstagramSpider(scrapy.Spider):
             type = node['__typename']
             code = node['shortcode']
 
-            if type == "GraphSidecar":
+            if type == "GraphSidecar" and self.sidecar == 'y':
                 yield scrapy.Request(
                     "https://www.instagram.com/p/" + code,
                     callback=self.parse_sideCar
                 )
 
-            elif type == "GraphImage":
+            elif type == "GraphImage" and self.images == 'y':
                 yield scrapy.Request(
                     url,
                     meta={'id': id, 'extension': '.jpg'},
                     callback=self.save_media
                 )
 
-            elif type == "GraphVideo":
+            elif type == "GraphVideo" and self.videos == 'y':
                 yield scrapy.Request(
                     "https://www.instagram.com/p/" + code,
                     callback=self.parse_page_video
