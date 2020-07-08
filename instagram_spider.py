@@ -58,23 +58,8 @@ class InstagramSpider(scrapy.Spider):
             print("!!!!! Error !!!! : Looks like a private account")
             return
 
-        has_next = (
-            user['edge_owner_to_timeline_media']['page_info']['has_next_page'] or
-            user['edge_saved_media']['page_info']['has_next_page'] or
-            user['edge_media_collections']['page_info']['has_next_page'] or
-            user['edge_related_profiles']['page_info']['has_next_page']
-        )
+        has_next = user['edge_owner_to_timeline_media']['page_info']['has_next_page']
         medias = user['edge_owner_to_timeline_media']['edges']
-        medias += user['edge_saved_media']['edges']
-        medias += user['edge_media_collections']['edges']
-        medias += user['edge_related_profiles']['edges']
-        if self.videos == 'y':
-            medias += user['edge_felix_video_timeline']['edges']
-            has_next = (
-                has_next or
-                user['edge_felix_video_timeline']['page_info']['has_next_page']
-            )
-
         medias.sort(key=getId)
 
         # We parse the photos
@@ -98,13 +83,14 @@ class InstagramSpider(scrapy.Spider):
                     callback=self.save_media
                 )
 
-            elif type == "GraphVideo":
+            elif type == "GraphVideo" and self.videos == 'y':
                 yield scrapy.Request(
                     "https://www.instagram.com/p/" + code,
                     callback=self.parse_page_video
                 )
 
         # If there is a next page, we crawl it
+        # Pagination is broken atm
         if has_next:
             url = "https://www.instagram.com/" + self.account + "/?max_id=" + medias[-1]['node']['id']
             yield scrapy.Request(url, callback=self.parse_page)
